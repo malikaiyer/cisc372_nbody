@@ -17,23 +17,23 @@
 __global__
 void computePairwiseAccels(vector3 *d_accels, vector3 *d_hPos, double *mass){
 	int i = blockIdx.x*blockDim.x + threadIdx.x;
-        //int j = blockIdx.y*blockDim.y + threadIdx.y;
-	int k;
-	int j;
+        int j = blockIdx.y*blockDim.y + threadIdx.y;
+	int k = blockIdx.z*blockDim.z + threadIdx.z;
+	
 	vector3 distance;
 	double magnitude_sq, magnitude, accelmag;
 
 	//printf("mass: %f", mass[0]);
 	//first compute the pairwise accelerations.  Effect is on the first argument.
-	if(i < NUMENTITIES){
-		for (j=0;j<NUMENTITIES;j++){
+	if(i < NUMENTITIES && j < NUMENTITIES && k < NUMENTITIES){
+		//for (j=0;j<NUMENTITIES;j++){
 			if (i==j) {
 				FILL_VECTOR(d_accels[i*NUMENTITIES+j],0,0,0); //i*NUMENTITIES so values can 
 			}
 			else{
-				for (k=0;k<3;k++) {
+				//if (k<NUMENTITIES) {
 					distance[k]= d_hPos[i][k]- d_hPos[j][k];
-				}
+				//}
 				magnitude_sq = distance[0]*distance[0]+distance[1]*distance[1]+distance[2]*distance[2];
 				magnitude = sqrt(magnitude_sq);
 				//printf("magnitude: %f", magnitude);
@@ -43,7 +43,7 @@ void computePairwiseAccels(vector3 *d_accels, vector3 *d_hPos, double *mass){
 						accelmag*distance[1]/magnitude,
 						accelmag*distance[2]/magnitude);
 			}
-		}
+		//}
 	}
 }
 
@@ -71,15 +71,15 @@ void sumRowsandUpdate(vector3* d_accels, vector3* d_hVel, vector3* d_hPos, doubl
 }
 
 void compute(){
-	int blockSize = 16;
-	int numBlocks = (NUMENTITIES*NUMENTITIES + blockSize - 1)/blockSize;
-	//dim3 szBlk(blockSize,blockSize);
-	//dim3 nBlk(numBlocks,numBlocks);
-	//int blockSize2 = 256;	
-	//int numBlocks2 = (NUMENTITIES*NUMENTITIES + blockSize2 - 1)/blockSize2;
+	//int blockSize = 16;
+	//int numBlocks = (NUMENTITIES*NUMENTITIES + blockSize - 1)/blockSize;
+	dim3 szBlk(16,16,3);
+	dim3 nBlk((NUMENTITIES+szBlk.x-1)/szBlk.x, (NUMENTITIES+szBlk.y-1)/szBlk.y, (NUMENTITIES+szBlk.z - 1)/szBlk.z);
+	int blockSize2 = 256;	
+	int numBlocks2 = (NUMENTITIES*NUMENTITIES + blockSize2 - 1)/blockSize2;
 
-	computePairwiseAccels<<<numBlocks, blockSize>>>(d_accels, d_hPos, d_mass);
-	sumRowsandUpdate<<<numBlocks, blockSize>>>(d_accels, d_hVel, d_hPos, d_mass);	
+	computePairwiseAccels<<<nBlk, szBlk>>>(d_accels, d_hPos, d_mass);
+	sumRowsandUpdate<<<numBlocks2, blockSize2>>>(d_accels, d_hVel, d_hPos, d_mass);	
 	
 }
 
