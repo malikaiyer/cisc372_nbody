@@ -18,7 +18,7 @@ __global__
 void computePairwiseAccels(vector3 *d_accels, vector3 *d_hPos, double *mass){
 	int i = blockIdx.x*blockDim.x + threadIdx.x;
         int j = blockIdx.y*blockDim.y + threadIdx.y;
-	int k;
+	int k = threadIdx.z;
 	
 	vector3 distance;
 	double magnitude_sq, magnitude, accelmag;
@@ -31,7 +31,8 @@ void computePairwiseAccels(vector3 *d_accels, vector3 *d_hPos, double *mass){
 				FILL_VECTOR(d_accels[i*NUMENTITIES+j],0,0,0); //i*NUMENTITIES so values can 
 			}
 			else{
-				for (k=0;k<3;k++) {
+	
+				if (k<3) {
 					distance[k]= d_hPos[i][k]- d_hPos[j][k];
 				}
 				magnitude_sq = distance[0]*distance[0]+distance[1]*distance[1]+distance[2]*distance[2];
@@ -73,18 +74,11 @@ void sumRowsandUpdate(vector3* d_accels, vector3* d_hVel, vector3* d_hPos, doubl
 void compute(){
 	//int blockSize = 16;
 	//int numBlocks = (NUMENTITIES*NUMENTITIES + blockSize - 1)/blockSize;
-	dim3 szBlk(16,16);
-	dim3 nBlk((NUMENTITIES*NUMENTITIES +szBlk.x-1)/szBlk.x, (NUMENTITIES*NUMENTITIES +szBlk.y-1)/szBlk.y);
+	dim3 szBlk(16,16,3);
+	dim3 nBlk((NUMENTITIES+szBlk.x-1)/szBlk.x, (NUMENTITIES+szBlk.y-1)/szBlk.y, 1);
 	int blockSize2 = 256;	
-	int numBlocks2 = (NUMENTITIES*NUMENTITIES + blockSize2 - 1)/blockSize2;
+	int numBlocks2 = (NUMENTITIES + blockSize2 - 1)/blockSize2;
 
 	computePairwiseAccels<<<nBlk, szBlk>>>(d_accels, d_hPos, d_mass);
 	sumRowsandUpdate<<<numBlocks2, blockSize2>>>(d_accels, d_hVel, d_hPos, d_mass);	
-	
 }
-
-
-
-
-
-
