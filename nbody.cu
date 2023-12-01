@@ -10,7 +10,16 @@
 // represents the objects in the system.  Global variables
 vector3 *hVel, *d_hVel;
 vector3 *hPos, *d_hPos;
-double *mass;
+double *mass, *d_mass;
+
+//other global vars
+size_t size_accels; //gets size of matrix and other values
+size_t size_accel_sum;
+size_t size_vel;
+size_t size_pos;
+size_t size_mass;
+
+vector3 *d_accels;
 
 //initHostMemory: Create storage for numObjects entities in our system
 //Parameters: numObjects: number of objects to allocate
@@ -58,7 +67,7 @@ void planetFill(){
 //Side Effects: Fills count entries in our system starting at index start (0 based)
 void randomFill(int start, int count)
 {
-	int i, j, c = start;
+	int i, j = start;
 	for (i = start; i < start + count; i++)
 	{
 		for (j = 0; j < 3; j++)
@@ -95,21 +104,56 @@ int main(int argc, char **argv)
 	int t_now;
 	//srand(time(NULL));
 	srand(1234);
-	initHostMemory(NUMENTITIES);
-	planetFill();
-	randomFill(NUMPLANETS + 1, NUMASTEROIDS);
+	initHostMemory(NUMENTITIES); //initializes memory for planets/asteroids
+	planetFill(); //fills in data for planets
+	randomFill(NUMPLANETS + 1, NUMASTEROIDS); //fills in data for asteroids
 	//now we have a system.
 	#ifdef DEBUG
 	printSystem(stdout);
+	printf("\n\n\n");
 	#endif
+
+
+	//memory allocation for cuda
+	size_accels = sizeof(vector3)*NUMENTITIES*NUMENTITIES;
+	size_vel = sizeof(vector3)*NUMENTITIES;
+	size_pos = sizeof(vector3)*NUMENTITIES;
+	size_mass = sizeof(double)*NUMENTITIES;
+
+	//allocating memory for matrix in GPU
+	cudaMalloc(&d_accels, size_accels);
+	cudaMalloc(&d_hVel, size_vel);
+	cudaMalloc(&d_hPos, size_pos);
+	cudaMalloc(&d_mass, size_mass);
+
+	
+	//only need to copy data from host to device
+	cudaMemcpy(d_hVel, hVel, size_vel, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_hPos, hPos, size_pos, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_mass, mass, size_mass, cudaMemcpyHostToDevice);	
+	
+	
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
 		compute();
 	}
+    
+	//after computation, copy data back from device to host
+	cudaMemcpy(hVel, d_hVel, size_vel, cudaMemcpyDeviceToHost);
+        cudaMemcpy(hPos, d_hPos, size_pos, cudaMemcpyDeviceToHost);
+        //cudaMemcpy(mass, d_mass, size_mass, cudaMemcpyDeviceToHost);	
+
+
 	clock_t t1=clock()-t0;
-#ifdef DEBUG
+	#ifdef DEBUG
 	printSystem(stdout);
-#endif
+	#endif
 	printf("This took a total time of %f seconds\n",(double)t1/CLOCKS_PER_SEC);
+
+	//free matrix in GPU
+	cudaFree(d_accels);
+	cudaFree(d_hVel);
+	cudaFree(d_hPos);
+	cudaFree(d_mass);
 
 	freeHostMemory();
 }
