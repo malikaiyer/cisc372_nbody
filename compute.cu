@@ -1,3 +1,4 @@
+//code by Malika Iyer and Jordan Photis
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
