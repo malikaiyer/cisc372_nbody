@@ -75,9 +75,9 @@ void compute(){
 	//int blockSize = 16;
 	//int numBlocks = (NUMENTITIES*NUMENTITIES + blockSize - 1)/blockSize;
 	dim3 szBlk(16,16);
-	dim3 nBlk((NUMENTITIES*NUMENTITIES +szBlk.x-1)/szBlk.x, (NUMENTITIES*NUMENTITIES +szBlk.y-1)/szBlk.y);
+	dim3 nBlk((NUMENTITIES +szBlk.x-1)/szBlk.x, (NUMENTITIES +szBlk.y-1)/szBlk.y);
 	int blockSize2 = 256;	
-	int numBlocks2 = (NUMENTITIES*NUMENTITIES + blockSize2 - 1)/blockSize2;
+	int numBlocks2 = (NUMENTITIES + blockSize2 - 1)/blockSize2;
 
 	computePairwiseAccels<<<nBlk, szBlk>>>(d_accels, d_hPos, d_mass);
 	sumRowsandUpdate<<<numBlocks2, blockSize2>>>(d_accels, d_hVel, d_hPos, d_mass);	
